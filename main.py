@@ -6,6 +6,9 @@ from lxml import etree
 import notion
 import logging
 
+import transformer
+
+
 class ColoredFormatter(logging.Formatter):
     COLORS = {
         'DEBUG': '\033[96m',  # Cyan
@@ -81,6 +84,7 @@ def visit(node: etree._Element, rich_texts:list):
         print(node.tail,  end='')
     return
 
+
 def get_spans_text(span_nodes):
     spans = []
     for span in span_nodes:
@@ -98,7 +102,28 @@ def visit_blockquote(node: etree._Element):
     rich_texts = list()
     for b in node.getchildren():
         if b.tag == 'p':
-            visit_p(b, rich_texts)
+            # 先实现吧，代码没设计好
+            blocks = []
+            for p in b.getchildren():
+                if p.tag == 'img':
+                    logger.debug('这是一张图片 %s', p.get("src"))
+                    image = transformer.transform_image(p.get("src"))
+                    blocks.append(image)
+                tail = ''
+                if p.tail is not None:
+                    tail = p.tail
+                if p.tag == 'span':
+                    if p.getchildren() is not None:
+                        children = p.getchildren()
+                        for child in children:
+                            if child.tag == 'strong':
+                                logger.debug("这是一段加粗标签 %s", child.text)
+                                notion.append_richtext(child.text + tail, False, 'red', False, rich_texts)
+                if p.tag == 'strong':
+                    logger.debug("这是一段加粗文本 %s", p.text)
+                    notion.append_richtext(p.text + tail, True, None, False, rich_texts)
+                if p.tail is not None and len(p.tail) > 0:
+                    logger.debug("node.tail: %s", p.tail)
     # 富文本引用
     notion.append_paragraph(None, notion_children, rich_texts=rich_texts)
 
