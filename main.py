@@ -59,7 +59,7 @@ def visit_p(p_node:etree._Element):
         visit(p, rich_texts)
     # 富文本段落
     notion.append_paragraph(None, notion_children, rich_texts=rich_texts)
-    print()
+
 def visit(node: etree._Element, rich_texts:list):
     if node.tag == 'img':
         logger.debug('这是一张图片 %s', node.get("src"))
@@ -88,12 +88,29 @@ def get_spans_text(span_nodes):
             spans.append(span.text)
     return spans
 
+def parse_article_title(element :etree._Element):
+    article_node = element.xpath("//title")
+    if article_node:
+        return article_node[0].text.removesuffix("-CSDN博客")
+
+
+def visit_blockquote(node: etree._Element):
+    rich_texts = list()
+    for b in node.getchildren():
+        if b.tag == 'p':
+            visit_p(b, rich_texts)
+    # 富文本引用
+    notion.append_paragraph(None, notion_children, rich_texts=rich_texts)
+
+
 if __name__ == '__main__':
-    response = requests.get("https://kangll.blog.csdn.net/article/details/133607135")
+    # response = requests.get("https://kangll.blog.csdn.net/article/details/133607135")
+    response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
+    logger.debug("html： \n %s", response.text)
     html: etree._Element = etree.HTML(response.text)
     content_node = html.xpath('//div[@class="blog-content-box"]')  # type: list[etree._Element]
-    content_node[0]
-    print(type(content_node[0]))
+    title_article = parse_article_title(content_node[0])
+    logger.debug("extract title success from html body: %s", title_article)
     article_node = content_node[0].xpath('//div[@id="content_views"]')
     children = article_node[0].getchildren()  # type: list[etree._Element]
     for child in children:
@@ -107,6 +124,8 @@ if __name__ == '__main__':
             elif child.text is not None:
                 logger.debug("这是一段段落：%s", child.text)
                 notion.append_paragraph(child.text, notion_children)
+        if child.tag == 'blockquote':
+            visit_blockquote(child)
         if child.tag == 'h1':
             headings = get_spans_text(child.xpath('span'))
             logger.debug("这是一级标题：%s", headings)
@@ -136,5 +155,5 @@ if __name__ == '__main__':
 
     client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g")
     json.dumps(notion_children)
-    resp = client.create_page("【网络】路由器和交换机的区别3", page_id="0351ec24-452c-472c-8183-2be67af3720b", children=notion_children)
-    print(resp.text)
+    # resp = client.create_page(title_article, page_id="0351ec24-452c-472c-8183-2be67af3720b", children=notion_children)
+    # print(resp.text)
