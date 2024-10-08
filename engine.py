@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElementNode:
-    def __init__(self, id=None, tag=None, children=None, html_element=None):
+    def __init__(self, id=None, tag=None, children: list = None, html_element=None):
         self.id = id
         self.tag = tag
         self.children = children
@@ -14,13 +14,17 @@ class ElementNode:
 
 
 class Text:
-    def __init__(self, text):
+    def __init__(self, text:str):
         self.text = text
+
+    def __str__(self):
+        return self.text
 
 
 class HeadingElementNode(ElementNode):
     def __init__(self, text: str, level: int, color=None, **kwargs):
         super().__init__(**kwargs)
+        self.text = text
         self.level = level
 
 
@@ -30,7 +34,7 @@ class ImageElementNode(ElementNode):
         self.src = src
 
 
-class RichText(Text):
+class RichText(ElementNode):
     def __init__(self, bold=None, italic=None, strikethrough=None, underline=None, code=None, color=None, **kwargs):
         super().__init__(**kwargs)
         self.bold = bold,
@@ -40,20 +44,24 @@ class RichText(Text):
         self.code = code
         self.color = color
 
+class NestedElementNode(ElementNode):
+    """
+    嵌套元素内容
+    """
+    def __init__(self, text: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
 
 class PElementNode(ElementNode):
-    def __init__(self, text: Text = None, rich_texts: list[RichText] = None, **kwargs):
+    def __init__(self, text: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.text = Text
-        self.rich_texts = rich_texts
+        self.text = text
 
 
 class CalloutElement(ElementNode):
-    def __init__(self, text: Text = None, rich_texts: list[RichText] = None, **kwargs):
+    def __init__(self, text: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.text = Text
-        self.rich_texts = rich_texts
-
+        self.text = text
 
 class Engine:
 
@@ -68,6 +76,7 @@ class Engine:
 
     def get_Elements(self):
         pass
+
 
 
 class CSDNEngine(Engine):
@@ -96,22 +105,54 @@ class CSDNEngine(Engine):
             if element:
                 self.elements.append(element)
 
-    def traverse(self, child:etree._Element):
-        if child.tag == 'img':
-            image_src = child.attrib("src")
+    @staticmethod
+    def __has_children__(element):
+        return element and len(element.getchildren()) > 0
+    
+    def traverse(self, element:etree._Element):
+        if element is None:
+            return None
+        if element.tag == 'img':
+            image_src = element.get("src")
             logger.debug('解析到图片: %s', image_src)
-            return ImageElementNode(image_src, tag="image", html_element=child)
-        # if child.tag == 'p':
-            # if len(child.getchildren()) > 0:
-                # visit_p(child)
-            # elif child.text is not None:
-            #     logger.debug("这是一段段落：%s", child.text)
-            #     notion.append_paragraph(child.text, notion_children)
-        # if child.tag == 'blockquote':
-            # visit_blockquote(child)
-        if child.tag == 'h1' or child.tag == 'h2' or child.tag == 'h3' or child.tag == 'h4' or child.tag == 'h5':
-            heading = child.find('span')
-            return HeadingElementNode(heading.text, child.tag[-1], tag=child.tag, html_element=child) if heading is not None else None
+            return ImageElementNode(image_src, tag="image", html_element=element)
+        if element.tag == 'p':
+            pElementNode = PElementNode(element.text, children=[])
+            if CSDNEngine.__has_children__(element):
+                for child in element.getchildren():
+                    logger.debug("这是一段段落：%s", child.text)
+                    elementNdde = self.traverse(child) # type: ElementNode
+                    pElementNode.children.append(elementNdde)
+            return pElementNode
+        if element.tag == 'blockquote':
+            calloutElement = CalloutElement(text=element.text)
+            # 肯定只会有一个子元素，没有标注套标注的情况
+            calloutElement.children = [self.traverse(element.getchildren()[0])]
+            return calloutElement
+        if element.tag == 'h1' or element.tag == 'h2' or element.tag == 'h3' or element.tag == 'h4' or element.tag == 'h5':
+            heading = element.find('span')
+            return HeadingElementNode(heading.text, element.tag[-1], tag=element.tag, html_element=element) if heading is not None else None
+        if element.tag == 'span':
+            nestedElement = NestedElementNode(element.text, children=[])
+            for child in element.getchildren():
+                element_node = self.traverse(child)
+                nestedElement.children.append(element_node) if element_node else None
+            return nestedElement
+        if element.tag == 'strong':
+            if CSDNEngine.__has_children__(element):
+                for child in element.getchildren():
+                    element_node = self.traverse(child)
+                    if isinstance(element_node, NestedElementNode):
+                        # TODO 暂时只返回第一个，有多个实在不好处理
+                        return element_node
+            else:
+                return RichText(element.text)
+        if element.tail is not None and element.tail.strip() != "":
+            return Text(element.tail)
+    
 
     def get_Elements(self) -> list[ElementNode]:
         return self.elements
+    
+
+
