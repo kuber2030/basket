@@ -10,8 +10,9 @@ class Client(object):
         "Notion-Version": "2022-06-28"
     }
 
-    def __init__(self, secrect: str):
+    def __init__(self, secrect: str, proxy):
         self.secrect = secrect
+        self.proxy = proxy
         self.headers["Authorization"] = self.headers["Authorization"].format(secrect)
 
     def create_page(self, title: str, children: list, database_id=None, page_id=None, **kwargs):
@@ -75,8 +76,10 @@ class Client(object):
         if not cover:
             params["cover"] = cover
         params['properties'] = properties
-        params['children'] = children
-        return requests.post("https://api.notion.com/v1/pages", json=params, headers=self.headers)
+        if children:
+            params['children'] = children
+        print("create page param ", params)
+        return requests.post("https://api.notion.com/v1/pages", json=params, headers=self.headers, proxies= self.proxy)
 
     """
     获取页面属性，只适合不超过25个reference的页面
@@ -90,7 +93,7 @@ class Client(object):
         page_id = self.decude_page_id(page_id)
         return requests.get(f"https://api.notion.com/v1/blocks/{page_id}/children", headers=self.headers)
 
-    def append_block(self, block_id: str, children: list, after: str):
+    def append_block(self, block_id: str, children: list, after: str = None):
         """
         Creates and appends new children blocks to the parent block_id specified. Blocks can be parented by other blocks, pages, or databases.
         https://developers.notion.com/reference/patch-block-children
@@ -99,9 +102,14 @@ class Client(object):
         :param after: The ID of the existing block that the new block should be appended after.
         :return: Returns a paginated list of newly created first level children block objects.
         """
-        data = {"children": children, "after": after}
+        for child in children:
+            child["object"] = "block"
+        data = {"children": children}
+        if after:
+            data["after"] = after
         block_id = self.decude_page_id(block_id)
-        return requests.patch(f"https://api.notion.com/v1/blocks/{block_id}/children", json=data, headers=self.headers)
+        print("创建block参数 ", data)
+        return requests.patch(f"https://api.notion.com/v1/blocks/{block_id}/children", json=data, headers=self.headers, proxies= self.proxy)
 
     def decude_page_id(self, page_id: str):
         assert len(page_id) >= 32

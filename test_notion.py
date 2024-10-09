@@ -1,11 +1,15 @@
+import logging
+import pytest
+
 import requests
 
 import engine
 import notion
-
+import transformer
+from main import ColoredFormatter
 
 class TestCase01Class():
-    client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g")
+    client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g", proxy={"https": "https://127.0.0.1:7890", "https": "http://127.0.0.1:7890"})
 
     def test_get_page(self):
         # https://www.notion.so/1178289df0698177845aec91fe937f31?pvs=4
@@ -33,8 +37,19 @@ class TestCase01Class():
         self.client.create_page()
 
 
-    def test_csdn_engin(self):
+    def test_csdn_engin(self, caplog):
         response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
         csdnEngine = engine.CSDNEngine("csdn", response.text, title="测试engine")
         assert  len(csdnEngine.get_Elements()) > 0
         print(csdnEngine.get_Elements())
+
+        # createdPage = self.client.create_page(csdnEngine.title, None, page_id="0351ec24-452c-472c-8183-2be67af3720b",)
+        # print(createdPage.text)
+        # if createdPage.status_code != 200:
+        #     return
+        # pageid = createdPage.json().get("id")
+        pageid = "11a8289d-f069-81f0-a37b-fd8a492dc147"
+        for element in csdnEngine.get_Elements():
+            notionEle = transformer.transformElement(element)
+            resp = self.client.append_block(pageid, notionEle)
+            print(resp.text)

@@ -87,6 +87,8 @@ class CSDNEngine(Engine):
         content_node = html.xpath('//div[@class="blog-content-box"]')  # type: list[etree._Element]
         if not title:
             self.title = self.parse_article_title(content_node[0])
+        else:
+            self.title = title
 
         self.article_content = content_node[0].xpath('//div[@id="content_views"]')[0]
         self.elements = []
@@ -131,7 +133,7 @@ class CSDNEngine(Engine):
             return calloutElement
         if element.tag == 'h1' or element.tag == 'h2' or element.tag == 'h3' or element.tag == 'h4' or element.tag == 'h5':
             heading = element.find('span')
-            return HeadingElementNode(heading.text, element.tag[-1], tag=element.tag, html_element=element) if heading is not None else None
+            return HeadingElementNode(heading.text, int(element.tag[-1]), tag=element.tag, html_element=element) if heading is not None else None
         if element.tag == 'span':
             nestedElement = NestedElementNode(element.text, children=[])
             for child in element.getchildren():
