@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 
@@ -10,7 +11,7 @@ class Client(object):
         "Notion-Version": "2022-06-28"
     }
 
-    def __init__(self, secrect: str, proxy):
+    def __init__(self, secrect: str, proxy=None):
         self.secrect = secrect
         self.proxy = proxy
         self.headers["Authorization"] = self.headers["Authorization"].format(secrect)
@@ -108,7 +109,7 @@ class Client(object):
         if after:
             data["after"] = after
         block_id = self.decude_page_id(block_id)
-        print("创建block参数 ", data)
+        logger.debug("创建block参数 %s", json.dumps(data))
         return requests.patch(f"https://api.notion.com/v1/blocks/{block_id}/children", json=data, headers=self.headers, proxies= self.proxy)
 
     def decude_page_id(self, page_id: str):

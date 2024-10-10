@@ -1,4 +1,4 @@
-from engine import ImageElementNode, PElementNode, HeadingElementNode
+from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode
 
 
 def transform_image(url: str):
@@ -20,6 +20,24 @@ def transform_image(url: str):
     return image
 
 
+def transformRichElementNode(node):
+    return {
+        "type": "text",
+        "text": {
+            "content": node.text,
+        },
+        "annotations": {
+            "bold": node.bold,
+            "italic": node.italic,
+            "strikethrough": node.strikethrough,
+            "underline": node.underline,
+            "code": node.code,
+            "color": "default"
+        },
+        "plain_text": "Some words ",
+    }
+
+
 def transformElement(node):
     if isinstance(node, PElementNode):
         return transformPElementNode(node)
@@ -29,6 +47,9 @@ def transformElement(node):
 
     if isinstance(node, HeadingElementNode):
         return transformHeadingElementNode(node)
+
+    if isinstance(node, RichText):
+        return transformRichElementNode(node)
 
 
 
@@ -68,16 +89,24 @@ def transformPElementNode(node: PElementNode):
     :param children:
     :return:
     """
-    paragraph = {"type": "paragraph"}
+    paragraph = {"type": "paragraph", "paragraph": {"rich_text": []}}
     if node.text is not None:
-        paragraph['rich_text'] = {
+        paragraph['paragraph']['rich_text'].append({
             "type": "text",
             "text": {
                 "content": node.text,
             }
-        }
+        })
     if len(node.children) > 0:
-        paragraph['children'] = []
-        for child in node.children:
-            paragraph['children'].append(transformElement(child))
+        paragraph['paragraph']['children'] = []
+        indices_to_remove = []
+        for i, child in enumerate(node.children):
+            notionEle = transformElement(child)
+            if isinstance(child, RichText):
+                paragraph['paragraph']['rich_text'].append(notionEle)
+                indices_to_remove.append(i)
+            elif isinstance(child, ElementNode):
+                paragraph['paragraph']['children'].append(notionEle)
+        for index in sorted(indices_to_remove, reverse=True):
+            del node.children[index]
     return paragraph

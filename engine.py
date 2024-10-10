@@ -35,9 +35,10 @@ class ImageElementNode(ElementNode):
 
 
 class RichText(ElementNode):
-    def __init__(self, bold=None, italic=None, strikethrough=None, underline=None, code=None, color=None, **kwargs):
+    def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color=None, **kwargs):
         super().__init__(**kwargs)
-        self.bold = bold,
+        self.text = text
+        self.bold = bold
         self.italic = italic
         self.strikethrough = strikethrough
         self.underline = underline
@@ -148,7 +149,7 @@ class CSDNEngine(Engine):
                         # TODO 暂时只返回第一个，有多个实在不好处理
                         return element_node
             else:
-                return RichText(element.text)
+                return RichText(element.text, bold=True)
         if element.tail is not None and element.tail.strip() != "":
             return Text(element.tail)
     
