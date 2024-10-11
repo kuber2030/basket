@@ -22,8 +22,12 @@ client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g",
                        # proxy={"https": "https://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
                        )
 
-response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
-csdnEngine = engine.CSDNEngine("csdn", response.text, title="测试engine")
+# response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
+text = ""
+with open("test.html", 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+    text = "".join(lines)
+csdnEngine = engine.CSDNEngine("csdn", text, title="测试engine")
 assert len(csdnEngine.get_Elements()) > 0
 # print(csdnEngine.get_Elements())
 
@@ -50,7 +54,7 @@ def create_block(pageid, elements):
             sys.exit(-1)
         else:
             logger.debug(resp.text)
-            id = resp.json().get("results")[0].get("id")
-            create_block(id, element.children)
+            blockid = resp.json().get("results")[0].get("id")
+            create_block(blockid, element.children)
 
 create_block(pageid, csdnEngine.get_Elements())

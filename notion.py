@@ -109,7 +109,7 @@ class Client(object):
         if after:
             data["after"] = after
         block_id = self.decude_page_id(block_id)
-        logger.debug("创建block参数 %s", json.dumps(data))
+        logger.debug("创建block参数 %s", json.dumps(data, ensure_ascii=False))
         return requests.patch(f"https://api.notion.com/v1/blocks/{block_id}/children", json=data, headers=self.headers, proxies= self.proxy)
 
     def decude_page_id(self, page_id: str):
@@ -219,7 +219,7 @@ def append_richtext(text, bold, color, italic, rich_texts, code=False, strikethr
             "code": code,
             "color": color
         },
-        "plain_text": text,
+        "plain_text": "",
         "href": None
     }
 

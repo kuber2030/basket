@@ -13,7 +13,7 @@ class ElementNode:
         self.html_element = html_element
 
 
-class Text:
+class PlainText:
     def __init__(self, text:str):
         self.text = text
 
@@ -91,7 +91,9 @@ class CSDNEngine(Engine):
         else:
             self.title = title
 
-        self.article_content = content_node[0].xpath('//div[@id="content_views"]')[0]
+        content_views = content_node[0].xpath('//div[@id="content_views"]')
+        if len(content_views) > 0:
+            self.article_content = content_views[0]
         self.elements = []
         assert self.article_content is not None
         self.parse_elements()
@@ -115,6 +117,9 @@ class CSDNEngine(Engine):
     def traverse(self, element:etree._Element):
         if element is None:
             return None
+        tail = ""
+        if element.tail is not None and element.tail.strip() != "":
+            tail = element.tail
         if element.tag == 'img':
             image_src = element.get("src")
             logger.debug('解析到图片: %s', image_src)
@@ -123,14 +128,17 @@ class CSDNEngine(Engine):
             pElementNode = PElementNode(element.text, children=[])
             if CSDNEngine.__has_children__(element):
                 for child in element.getchildren():
-                    logger.debug("这是一段段落：%s", child.text)
+                    if child.text is not None:
+                        child.text += tail
                     elementNdde = self.traverse(child) # type: ElementNode
                     pElementNode.children.append(elementNdde)
             return pElementNode
         if element.tag == 'blockquote':
             calloutElement = CalloutElement(text=element.text)
-            # 肯定只会有一个子元素，没有标注套标注的情况
-            calloutElement.children = [self.traverse(element.getchildren()[0])]
+            calloutElement_children = []
+            for child in element.getchildren():
+                calloutElement_children.append(self.traverse(child))
+            calloutElement.children = calloutElement_children
             return calloutElement
         if element.tag == 'h1' or element.tag == 'h2' or element.tag == 'h3' or element.tag == 'h4' or element.tag == 'h5':
             heading = element.find('span')
@@ -139,7 +147,13 @@ class CSDNEngine(Engine):
             nestedElement = NestedElementNode(element.text, children=[])
             for child in element.getchildren():
                 element_node = self.traverse(child)
+                # 如果是span标签，嵌套这strong标签，说明要加粗并加颜色
+                if child.tag == 'strong':
+                    element_node.color = 'green'
                 nestedElement.children.append(element_node) if element_node else None
+            # strong标签里面套了span，span尾部还跟了文本，
+            if element.tail is not None and element.tail.strip() != "" and element.getparent().tag == 'strong':
+                nestedElement.children.append(RichText(element.tail, bold=True))
             return nestedElement
         if element.tag == 'strong':
             if CSDNEngine.__has_children__(element):
@@ -149,9 +163,8 @@ class CSDNEngine(Engine):
                         # TODO 暂时只返回第一个，有多个实在不好处理
                         return element_node
             else:
-                return RichText(element.text, bold=True)
-        if element.tail is not None and element.tail.strip() != "":
-            return Text(element.tail)
+                return RichText(element.text + tail, bold=True)
+
     
 
     def get_Elements(self) -> list[ElementNode]:
