@@ -9,5 +9,13 @@ What's different: It's highly customizable, filtering out sidebars and skipping 
 ## Supported Websites
 
 - [x] CSDN
+  - [x] support heading
+  - [x] support paragraph
+  - [x] support image
+  - [x] support callout
+  - [ ] support link
+  - [ ] support unordered list
+  - [ ] support table
+  - [ ] support code block
 - [ ] JianShu
 - [ ] JueJin

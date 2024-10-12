@@ -35,7 +35,7 @@ class ImageElementNode(ElementNode):
 
 
 class RichText(ElementNode):
-    def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color=None, **kwargs):
+    def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color="default", **kwargs):
         super().__init__(**kwargs)
         self.text = text
         self.bold = bold
@@ -63,6 +63,23 @@ class CalloutElement(ElementNode):
     def __init__(self, text: str = None, **kwargs):
         super().__init__(**kwargs)
         self.text = text
+
+class ULElement(ElementNode):
+    """
+     无序列表
+    """
+    def __init__(self, text: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
+
+class OLElement(ElementNode):
+    """
+     无序列表
+    """
+    def __init__(self, text: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
+
 
 class Engine:
 
@@ -140,9 +157,30 @@ class CSDNEngine(Engine):
                 calloutElement_children.append(self.traverse(child))
             calloutElement.children = calloutElement_children
             return calloutElement
+        if element.tag == 'ul':
+            ulElement = ULElement(children=[])
+            for child in element.getchildren():
+                ulElement.children.append(self.traverse(child))
+        if element.tag == 'ol':
+            olElement = OLElement(children=[])
+            for child in element.getchildren():
+                olElement.children.append(self.traverse(child))
         if element.tag == 'h1' or element.tag == 'h2' or element.tag == 'h3' or element.tag == 'h4' or element.tag == 'h5':
             heading = element.find('span')
             return HeadingElementNode(heading.text, int(element.tag[-1]), tag=element.tag, html_element=element) if heading is not None else None
+        # li 存在两种情况，一种是直接套文本，另外一种是套span标签
+        if element.tag == 'li':
+            if CSDNEngine.__has_children__(element):
+                nestedElement = NestedElementNode(element.text, children=[])
+                for child in element.getchildren():
+                    element_node = self.traverse(child)
+                    if child.tag == 'strong':
+                        # TODO 写死红色，后面再解析RGB值
+                        element_node.color = 'red'
+                    nestedElement.children.append(element_node) if element_node else None
+            else:
+                return RichText(element.text + tail, bold=False)
+
         if element.tag == 'span':
             nestedElement = NestedElementNode(element.text, children=[])
             for child in element.getchildren():

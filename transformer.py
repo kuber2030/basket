@@ -1,5 +1,5 @@
 from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
-    NestedElementNode
+    NestedElementNode, ULElement
 
 
 def transform_image(url: str):
@@ -33,7 +33,7 @@ def transformRichElementNode(node):
             "strikethrough": node.strikethrough,
             "underline": node.underline,
             "code": node.code,
-            "color": "default"
+            "color": node.color
         },
         "plain_text": "",
     }
@@ -45,6 +45,9 @@ def transformElement(node):
 
     if isinstance(node, PElementNode) or isinstance(node, NestedElementNode):
         return transformPElementNode(node)
+
+    if isinstance(node, ULElement):
+        return transformUlElementNode(node)
 
     if isinstance(node, ImageElementNode):
         return transformImageElementNode(node)
@@ -136,5 +139,34 @@ def transformPElementNode(node: PElementNode | NestedElementNode):
         # for index in sorted(indices_to_remove, reverse=True):
         #     del node.children[index]
         # 删除所有子元素
+        node.children = []
+    return paragraph
+
+
+def transformUlElementNode(node: ULElement):
+    """
+    添加列表
+    :param url:
+    :param children:
+    :return:
+    """
+    paragraph = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+    if node.text is not None:
+        paragraph['bulleted_list_item']['rich_text'].append({
+            "type": "text",
+            "text": {
+                "content": node.text,
+            }
+        })
+    if len(node.children) > 0:
+        paragraph['bulleted_list_item']['children'] = []
+        for i, child in enumerate(node.children):
+            notionEle = transformElement(child)
+            if isinstance(child, RichText):
+                paragraph['bulleted_list_item']['rich_text'].append(notionEle)
+            elif isinstance(child, ImageElementNode):
+                paragraph['bulleted_list_item']['children'].append(notionEle)
+            elif isinstance(child, ElementNode):
+                paragraph['bulleted_list_item']['children'].append(notionEle)
         node.children = []
     return paragraph
