@@ -102,22 +102,6 @@ def transformCalloutElement(node: CalloutElement):
     callout['callout']['color'] = 'gray_background'
     # 默认图标💡
     callout['callout']['icon'] = {"type": "emoji", "emoji": "💡"}
-    # notion CalloutElement不能嵌入p标签，
-    # richText = []
-    # newChildren = []
-    # for child in node.children:
-    #     if isinstance(child, PElementNode):
-    #         # p标签本身可能包含text，所以这里只能转换成不加粗的richTest
-    #         if child.text is not None:
-    #             richText.append(transformRichElementNode(RichText(child.text.rstrip(" "), False)))
-    #         for p_child in child.children:
-    #             # 因notion api限制。无法在标注节点里。创建富文本子节点，只能随标注节点一起创建
-    #             if isinstance(p_child, RichText):
-    #                 richText.append(transformRichElementNode(p_child))
-    #             else:
-    #                 newChildren.append(p_child)
-    #         callout['callout']['rich_text'] += richText
-    #         node.children = newChildren
     return callout
 
 
@@ -138,20 +122,19 @@ def transformPElementNode(node: PElementNode | NestedElementNode):
         })
     if len(node.children) > 0:
         paragraph['paragraph']['children'] = []
-        indices_to_remove = []
+        # indices_to_remove = []
         for i, child in enumerate(node.children):
             notionEle = transformElement(child)
-            # 嵌套元素不随p标签一起创建，下一次递归再创建
-            if isinstance(child, NestedElementNode):
-                continue
             if isinstance(child, RichText):
                 paragraph['paragraph']['rich_text'].append(notionEle)
-                indices_to_remove.append(i)
+                # indices_to_remove.append(i)
             elif isinstance(child, ImageElementNode):
                 paragraph['paragraph']['children'].append(notionEle)
-                indices_to_remove.append(i)
+                # indices_to_remove.append(i)
             elif isinstance(child, ElementNode):
                 paragraph['paragraph']['children'].append(notionEle)
-        for index in sorted(indices_to_remove, reverse=True):
-            del node.children[index]
+        # for index in sorted(indices_to_remove, reverse=True):
+        #     del node.children[index]
+        # 删除所有子元素
+        node.children = []
     return paragraph
