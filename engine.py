@@ -1,5 +1,4 @@
 import logging
-
 from lxml import etree
 
 logger = logging.getLogger(__name__)
@@ -161,23 +160,34 @@ class CSDNEngine(Engine):
             ulElement = ULElement(children=[])
             for child in element.getchildren():
                 ulElement.children.append(self.traverse(child))
+            return ulElement
         if element.tag == 'ol':
             olElement = OLElement(children=[])
             for child in element.getchildren():
                 olElement.children.append(self.traverse(child))
+            return olElement
         if element.tag == 'h1' or element.tag == 'h2' or element.tag == 'h3' or element.tag == 'h4' or element.tag == 'h5':
             heading = element.find('span')
-            return HeadingElementNode(heading.text, int(element.tag[-1]), tag=element.tag, html_element=element) if heading is not None else None
+            if heading is not None:
+                return HeadingElementNode(heading.text, int(element.tag[-1]), tag=element.tag, html_element=element)
+            heading = element.find('a')
+            if heading is not None:
+                # 非标准格式
+                return HeadingElementNode(heading.tail, int(element.tag[-1]), tag=element.tag, html_element=element)
         # li 存在两种情况，一种是直接套文本，另外一种是套span标签
         if element.tag == 'li':
             if CSDNEngine.__has_children__(element):
                 nestedElement = NestedElementNode(element.text, children=[])
                 for child in element.getchildren():
                     element_node = self.traverse(child)
-                    if child.tag == 'strong':
+                    if child.tag == 'strong' and element_node is not None:
                         # TODO 写死红色，后面再解析RGB值
-                        element_node.color = 'red'
-                    nestedElement.children.append(element_node) if element_node else None
+                        element_node.color = 'default'
+                        nestedElement.children.append(element_node)
+                        if child.tail is not None and child.tail.strip() != "":
+                            nestedElement.children.append(RichText(child.tail, bold=False))
+
+                return nestedElement
             else:
                 return RichText(element.text + tail, bold=False)
 
@@ -201,7 +211,7 @@ class CSDNEngine(Engine):
                         # TODO 暂时只返回第一个，有多个实在不好处理
                         return element_node
             else:
-                return RichText(element.text + tail, bold=True)
+                return RichText(element.text, bold=True, html_element=element)
 
     
 

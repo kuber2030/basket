@@ -1,13 +1,11 @@
 import logging
-import pytest
 
 import requests
 
 import engine
 import notion
 import transformer
-from main import ColoredFormatter
-
+import logging
 class TestCase01Class():
     client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g", proxy={"https": "https://127.0.0.1:7890", "https": "http://127.0.0.1:7890"})
 
@@ -53,3 +51,7 @@ class TestCase01Class():
             notionEle = transformer.transformElement(element)
             resp = self.client.append_block(pageid, notionEle)
             print(resp.text)
+
+    def test_create_list_item(self):
+        print(1111)
+        logging.info("2222")

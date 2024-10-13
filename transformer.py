@@ -1,5 +1,11 @@
+from queue import Queue
+from turtle import st
+
+import scipy as sp
+from sympy import li
+
 from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
-    NestedElementNode, ULElement
+    NestedElementNode, ULElement, OLElement
 
 
 def transform_image(url: str):
@@ -49,6 +55,9 @@ def transformElement(node):
     if isinstance(node, ULElement):
         return transformUlElementNode(node)
 
+    if isinstance(node, OLElement):
+        return transformOlementNode(node)
+
     if isinstance(node, ImageElementNode):
         return transformImageElementNode(node)
 
@@ -60,11 +69,19 @@ def transformElement(node):
 
 
 def transformHeadingElementNode(node: HeadingElementNode):
-    if node.level > 3:
-        node.level = node.level % 3
+    # notion最大只支持3级标题
+    level = node.level % 4
+    if node.level >=4:
+        level += 1
+    # 分割得到数字
+    splitted = "".split(" ", 1)
+    if len(splitted) > 0:
+        spped = splitted[0].split(".")
+        if len(spped) > 0:
+            level = int(spped[0])
     heading = {
-        "type": f"heading_{node.level}",
-        f"heading_{node.level}": {
+        "type": f"heading_{level}",
+        f"heading_{level}": {
             "rich_text": [{"type": "text", "text": {"content": node.text}}]
         }
     }
@@ -150,23 +167,69 @@ def transformUlElementNode(node: ULElement):
     :param children:
     :return:
     """
-    paragraph = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
-    if node.text is not None:
-        paragraph['bulleted_list_item']['rich_text'].append({
-            "type": "text",
-            "text": {
-                "content": node.text,
-            }
-        })
-    if len(node.children) > 0:
-        paragraph['bulleted_list_item']['children'] = []
-        for i, child in enumerate(node.children):
-            notionEle = transformElement(child)
-            if isinstance(child, RichText):
-                paragraph['bulleted_list_item']['rich_text'].append(notionEle)
-            elif isinstance(child, ImageElementNode):
-                paragraph['bulleted_list_item']['children'].append(notionEle)
-            elif isinstance(child, ElementNode):
-                paragraph['bulleted_list_item']['children'].append(notionEle)
-        node.children = []
-    return paragraph
+    list_items = []
+    stack = []
+    stack.append(node)
+    while len(stack) > 0:
+        current = stack.pop()
+        if current.text is not None and not isinstance(current, RichText):
+            list_item['bulleted_list_item']['rich_text'].append({
+                "type": "text",
+                "text": {
+                    "content": current.text,
+                }
+            })
+        if isinstance(current, NestedElementNode):
+            for child in reversed(current.children):
+                stack.append(child)
+            size = len(current.children)
+            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+            for i in range(size):
+                child_in_current = stack.pop()
+                list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
+            list_items.append(list_item)
+        # 如果已经是富文本了，直接追加
+        elif isinstance(current, RichText):
+            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+            list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(current))
+            list_items.append(list_item)
+        elif isinstance(current, ULElement):
+            for child in reversed(current.children):
+                stack.append(child)
+    # 删除所有的子元素，因为在这一步我们已经递归完毕了
+    node.children=[]
+    return list_items
+
+def transformOlementNode(node: OLElement):
+    """
+    add numbered list item
+    :param url:
+    :param children:
+    :return:
+    """
+    list_items = []
+    stack = []
+    stack.append(node)
+    while len(stack) > 0:
+        current = stack.pop()
+        if current.text is not None and not isinstance(current, RichText):
+            list_item['numbered_list_item']['rich_text'].append({
+                "type": "text",
+                "text": {
+                    "content": current.text,
+                }
+            })
+        if isinstance(current, NestedElementNode):
+            for child in reversed(current.children):
+                stack.append(child)
+        # 如果已经是富文本了，直接追加
+        elif isinstance(current, RichText):
+            list_item = {"type": "numbered_list_item", "numbered_list_item": {"rich_text": []}}
+            list_item['numbered_list_item']['rich_text'].append(transformRichElementNode(current))
+            list_items.append(list_item)
+        elif isinstance(current, OLElement):
+            for child in reversed(current.children):
+                stack.append(child)
+    # 删除所有的子元素，因为在这一步我们已经递归完毕了
+    node.children = []
+    return list_items
