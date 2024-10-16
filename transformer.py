@@ -5,7 +5,7 @@ import scipy as sp
 from sympy import li
 
 from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
-    NestedElementNode, ULElement, OLElement
+    NestedElementNode, ULElement, OLElement, LinkElementNode
 
 
 def transform_image(url: str):
@@ -61,6 +61,9 @@ def transformElement(node):
     if isinstance(node, ImageElementNode):
         return transformImageElementNode(node)
 
+    if isinstance(node, LinkElementNode):
+        return transformLinkElementNode(node)
+
     if isinstance(node, HeadingElementNode):
         return transformHeadingElementNode(node)
 
@@ -107,6 +110,21 @@ def transformImageElementNode(node: ImageElementNode):
     return image
 
 
+def transformLinkElementNode(node: LinkElementNode):
+    return {
+        "type": "text",
+        "text": {
+            "content": node.text,
+            "link": {
+                "url": node.href
+            }
+        },
+        "plain_text": "",
+        "href": node.href,
+    }
+
+
+
 def transformCalloutElement(node: CalloutElement):
     callout = {"type": "callout", "callout": {"rich_text": []}}
     node.text = node.text.strip() if node.text is not None else None
@@ -150,11 +168,10 @@ def transformPElementNode(node: PElementNode | NestedElementNode):
                 # indices_to_remove.append(i)
             elif isinstance(child, ImageElementNode):
                 paragraph['paragraph']['children'].append(notionEle)
-                # indices_to_remove.append(i)
+            elif isinstance(child, LinkElementNode):
+                paragraph['paragraph']['rich_text'].append(notionEle)
             elif isinstance(child, ElementNode):
                 paragraph['paragraph']['children'].append(notionEle)
-        # for index in sorted(indices_to_remove, reverse=True):
-        #     del node.children[index]
         # 删除所有子元素
         node.children = []
     return paragraph

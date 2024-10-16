@@ -33,6 +33,13 @@ class ImageElementNode(ElementNode):
         self.src = src
 
 
+class LinkElementNode(ElementNode):
+    def __init__(self, href: str, text: str, **kwargs):
+        super().__init__(**kwargs)
+        self.href = href
+        self.text = text
+
+
 class RichText(ElementNode):
     def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color="default", **kwargs):
         super().__init__(**kwargs)
@@ -140,6 +147,9 @@ class CSDNEngine(Engine):
             image_src = element.get("src")
             logger.debug('解析到图片: %s', image_src)
             return ImageElementNode(image_src, tag="image", html_element=element)
+        if element.tag == 'a':
+            href = element.get("href")
+            return LinkElementNode(href, element.text, tag="a", html_element=element)
         if element.tag == 'p':
             pElementNode = PElementNode(element.text, children=[])
             if CSDNEngine.__has_children__(element):
