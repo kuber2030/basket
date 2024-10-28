@@ -20,21 +20,21 @@ client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g",
                        # proxy={"https": "https://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
                        )
 
-response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
-text = ""
-with open("./test/test4.html", 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-    text = "".join(lines)
-csdnEngine = engine.CSDNEngine("csdn", text, title="测试engine")
+response = requests.get("https://kangll.blog.csdn.net/article/details/133607135")
+text = response.text
+# with open("./test/test6.html", 'r', encoding='utf-8') as f:
+#     lines = f.readlines()
+#     text = "".join(lines)
+csdnEngine = engine.CSDNEngine("csdn", text)
 assert len(csdnEngine.get_Elements()) > 0
 # print(csdnEngine.get_Elements())
 
-# createdPage = self.client.create_page(csdnEngine.title, None, page_id="0351ec24-452c-472c-8183-2be67af3720b",)
-# print(createdPage.text)
-# if createdPage.status_code != 200:
-#     return
-# pageid = createdPage.json().get("id")
-pageid = "11a8289d-f069-81f0-a37b-fd8a492dc147"
+createdPage = client.create_page(csdnEngine.title, None, page_id="12d8289df06980afa989fe9acf337c3e",)
+print(createdPage.text)
+if createdPage.status_code != 200:
+    sys.exit(-1)
+pageid = createdPage.json().get("id")
+# pageid = "12d8289df06981688ecaecf8bf2fa268"
 
 def create_block(pageid, elements):
     if elements is None:

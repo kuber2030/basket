@@ -41,7 +41,7 @@ class LinkElementNode(ElementNode):
 
 
 class RichText(ElementNode):
-    def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color="default", **kwargs):
+    def __init__(self, text, bold=False, italic=False, strikethrough=False, underline=False, code=False, color="default", tail=None, **kwargs):
         super().__init__(**kwargs)
         self.text = text
         self.bold = bold
@@ -50,6 +50,14 @@ class RichText(ElementNode):
         self.underline = underline
         self.code = code
         self.color = color
+        self.tail = tail
+
+class CodeElementNode(ElementNode):
+
+    def __init__(self, text: str, language: str, **kwargs):
+        super().__init__(**kwargs)
+        self.text = text
+        self.language = language
 
 class NestedElementNode(ElementNode):
     """
@@ -119,6 +127,7 @@ class CSDNEngine(Engine):
             self.article_content = content_views[0]
         self.elements = []
         assert self.article_content is not None
+        self.toc_exists = False
         self.parse_elements()
 
     def parse_article_title(self, element: etree._Element):
@@ -130,16 +139,32 @@ class CSDNEngine(Engine):
         children = self.article_content.getchildren()  # type: list[etree._Element]
         for child in children:
             element = self.traverse(child)
-            if element:
+            # 某些情况下，会返回多个
+            if isinstance(element, list):
+                self.elements += element
+            elif element is not None:
                 self.elements.append(element)
 
     @staticmethod
     def __has_children__(element):
         return element and len(element.getchildren()) > 0
-    
+
     def traverse(self, element:etree._Element):
         if element is None:
             return None
+
+        if element.get("id") == "hr-toc":
+            # 还没跳过目录区
+            self.toc_exists = False
+            return None
+        # 目录出现了
+        if element.get("id") == "main-toc":
+            # 还没跳过目录区
+            self.toc_exists = True
+            return None
+        if self.toc_exists:
+            return None
+
         tail = ""
         if element.tail is not None and element.tail.strip() != "":
             tail = element.tail
@@ -154,10 +179,11 @@ class CSDNEngine(Engine):
             pElementNode = PElementNode(element.text, children=[])
             if CSDNEngine.__has_children__(element):
                 for child in element.getchildren():
-                    if child.text is not None:
-                        child.text += tail
                     elementNdde = self.traverse(child) # type: ElementNode
                     pElementNode.children.append(elementNdde)
+                    # 好多不规范的情况
+                    if child.tail is not None and child.tail.strip() != "":
+                        pElementNode.children.append(RichText(child.tail.strip()))
             return pElementNode
         if element.tag == 'blockquote':
             calloutElement = CalloutElement(text=element.text)
@@ -184,6 +210,10 @@ class CSDNEngine(Engine):
             if heading is not None:
                 # 非标准格式
                 return HeadingElementNode(heading.tail, int(element.tag[-1]), tag=element.tag, html_element=element)
+            # 特殊情况兼容处理
+            headingText = element.text
+            if headingText is not None:
+                return HeadingElementNode(headingText, int(element.tag[-1]), tag=element.tag, html_element=element)
         # li 存在两种情况，一种是直接套文本，另外一种是套span标签
         if element.tag == 'li':
             if CSDNEngine.__has_children__(element):
@@ -196,6 +226,18 @@ class CSDNEngine(Engine):
                         nestedElement.children.append(element_node)
                         if child.tail is not None and child.tail.strip() != "":
                             nestedElement.children.append(RichText(child.tail, bold=False))
+                    elif child.tag == 'span' and element_node is not None and isinstance(element_node, NestedElementNode):
+                        nestedElement.children += element_node.children
+                        if child.tail is not None and child.tail.strip() != "":
+                            nestedElement.children.append(RichText(child.tail, bold=False))
+                        return nestedElement
+                    elif child.tag == 'img' and element_node is not None:
+                        nestedElement.children.append(element_node)
+                    elif child.tag == 'a' and element_node is not None:
+                        nestedElement.children.append(element_node)
+
+                    if child.tail is not None and child.tail.strip() != "":
+                        nestedElement.children.append(RichText(child.tail.strip()))
 
                 return nestedElement
             else:
@@ -222,8 +264,35 @@ class CSDNEngine(Engine):
                         return element_node
             else:
                 return RichText(element.text, bold=True, html_element=element)
+        if element.tag == 'em':
+            return RichText(element.text, italic=True, html_element=element)
 
-    
+        if element.tag == 'pre':
+            # 解析code标签
+            if element.getchildren() and element.getchildren()[0].tag == "code":
+                code_bolock = ""
+                language = "bash"
+                code_language = element.get("class") if element.get("class") is not None else ""
+                if code_language.find("java") > 0:
+                    language = 'java'
+                if code_language.find("python") > 0:
+                    language = 'python'
+                if code_language.find("go") > 0:
+                    language = 'go'
+              # type: list[etree._Element]
+                code = element.xpath("code")
+                if code is None or len(code) <= 0:
+                    return None
+                if code[0].text is not None and code[0].text != '\r':
+                    code_bolock += code[0].text
+                children = code[0].getchildren()
+                for child in children:
+                    if child.tag == 'span':
+                        code_bolock += child.text
+                        if child.tail and child.tail!= '\r':
+                            code_bolock += child.tail
+                if code_bolock != '':
+                    return CodeElementNode(code_bolock, language, tag="code", html_element=element)
 
     def get_Elements(self) -> list[ElementNode]:
         return self.elements

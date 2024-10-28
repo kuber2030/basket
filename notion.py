@@ -28,7 +28,7 @@ class Client(object):
         parent = {}
         properties = {}
         if page_id:
-            parent["page_id"] = page_id
+            parent["page_id"] = self.decude_page_id(page_id)
             # If the parent is a page, then the only valid object key is title.
             properties["title"] = {
                 # 1178289d-f069-81f9-9e3a-e2a57448f265

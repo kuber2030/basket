@@ -1,11 +1,8 @@
-from queue import Queue
-from turtle import st
-
-import scipy as sp
-from sympy import li
+import copy
+import logging
 
 from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
-    NestedElementNode, ULElement, OLElement, LinkElementNode
+    NestedElementNode, ULElement, OLElement, LinkElementNode, CodeElementNode
 
 
 def transform_image(url: str):
@@ -28,21 +25,29 @@ def transform_image(url: str):
 
 
 def transformRichElementNode(node):
-    return {
-        "type": "text",
-        "text": {
-            "content": node.text,
-        },
-        "annotations": {
-            "bold": node.bold,
-            "italic": node.italic,
-            "strikethrough": node.strikethrough,
-            "underline": node.underline,
-            "code": node.code,
-            "color": node.color
-        },
-        "plain_text": "",
-    }
+    try:
+        n = {
+            "type": "text",
+            "text": {
+                "content": node.text,
+            },
+            "annotations": {
+                "bold": node.bold,
+                "italic": node.italic,
+                "strikethrough": node.strikethrough,
+                "underline": node.underline,
+                "code": node.code,
+                "color": node.color
+            },
+            "plain_text": "",
+        }
+    except Exception as e:
+        print(e)
+    return n
+
+
+
+
 
 
 def transformElement(node):
@@ -70,6 +75,10 @@ def transformElement(node):
     if isinstance(node, RichText):
         return transformRichElementNode(node)
 
+    if isinstance(node, CodeElementNode):
+        return transformCodeElementNode(node)
+
+
 
 def transformHeadingElementNode(node: HeadingElementNode):
     # notion最大只支持3级标题
@@ -77,11 +86,14 @@ def transformHeadingElementNode(node: HeadingElementNode):
     if node.level >=4:
         level += 1
     # 分割得到数字
-    splitted = "".split(" ", 1)
-    if len(splitted) > 0:
+    splitted = node.text.split(" ", 1)
+    if len(splitted) > 1:
         spped = splitted[0].split(".")
         if len(spped) > 0:
-            level = int(spped[0])
+            try:
+                level = int(len(spped))
+            except Exception as e:
+                logging.error("解析标题级别失败", exc_info=e)
     heading = {
         "type": f"heading_{level}",
         f"heading_{level}": {
@@ -165,6 +177,7 @@ def transformPElementNode(node: PElementNode | NestedElementNode):
             notionEle = transformElement(child)
             if isinstance(child, RichText):
                 paragraph['paragraph']['rich_text'].append(notionEle)
+                deepCopyRichTextIfExistsTail(child, notionEle, paragraph)
                 # indices_to_remove.append(i)
             elif isinstance(child, ImageElementNode):
                 paragraph['paragraph']['children'].append(notionEle)
@@ -175,6 +188,19 @@ def transformPElementNode(node: PElementNode | NestedElementNode):
         # 删除所有子元素
         node.children = []
     return paragraph
+
+
+def deepCopyRichTextIfExistsTail(child, notionEle, paragraph):
+    """
+    深拷贝RichText如果存在尾部文本
+    """
+    if child.tail and len(child.tail) > 0:
+        tailRichText = copy.deepcopy(notionEle)
+        tailRichText['text']['content'] = child.tail
+        tailRichText['annotations']['bold'] = False
+        tailRichText['annotations']['italic'] = False
+        tailRichText['annotations']['color'] = 'default'
+        paragraph['paragraph']['rich_text'].append(tailRichText)
 
 
 def transformUlElementNode(node: ULElement):
@@ -203,7 +229,17 @@ def transformUlElementNode(node: ULElement):
             list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
             for i in range(size):
                 child_in_current = stack.pop()
-                list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
+                # 处理li标签中，还会嵌套图片的特殊情况
+                if isinstance(child_in_current, ImageElementNode):
+                    if not hasattr(list_item['bulleted_list_item'], 'children'):
+                        list_item['bulleted_list_item']['children'] = []
+                    list_item['bulleted_list_item']['children'].append(transformImageElementNode(child_in_current))
+                elif isinstance(child_in_current, LinkElementNode):
+                    if not hasattr(list_item['bulleted_list_item'], 'children'):
+                        list_item['bulleted_list_item']['children'] = []
+                    list_item['bulleted_list_item']['rich_text'].append(transformLinkElementNode(child_in_current))
+                else:
+                    list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
             list_items.append(list_item)
         # 如果已经是富文本了，直接追加
         elif isinstance(current, RichText):
@@ -250,3 +286,18 @@ def transformOlementNode(node: OLElement):
     # 删除所有的子元素，因为在这一步我们已经递归完毕了
     node.children = []
     return list_items
+
+
+def transformCodeElementNode(node):
+    code = {"type": "code", "code": {"rich_text": []}}
+    node.text = node.text.strip() if node.text is not None else None
+    if node.text is not None and len(node.text) > 0:
+        node.text = node.text.strip()
+        code['code']['rich_text'].append({
+            "type": "text",
+            "text": {
+                "content": node.text,
+            }
+        })
+    code['code']['language'] = node.language
+    return code
