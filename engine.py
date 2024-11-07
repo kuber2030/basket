@@ -224,8 +224,8 @@ class CSDNEngine(Engine):
                         # TODO 写死红色，后面再解析RGB值
                         element_node.color = 'default'
                         nestedElement.children.append(element_node)
-                        if child.tail is not None and child.tail.strip() != "":
-                            nestedElement.children.append(RichText(child.tail, bold=False))
+                        # if child.tail is not None and child.tail.strip() != "":
+                        #     nestedElement.children.append(RichText(child.tail, bold=False))
                     elif child.tag == 'span' and element_node is not None and isinstance(element_node, NestedElementNode):
                         nestedElement.children += element_node.children
                         if child.tail is not None and child.tail.strip() != "":
