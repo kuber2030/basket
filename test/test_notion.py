@@ -12,13 +12,13 @@ class TestCase01Class():
     def test_get_page(self):
         # https://www.notion.so/1178289df0698177845aec91fe937f31?pvs=4
         # https://www.notion.so/blockid-1188289df0698113b472c82a651a2a0c?pvs=4
-        # 1188289df0698113b472c82a651a2a0c
-        resp = self.client.get_page("1178289df0698177845aec91fe937f31")
+        # 1188289df0698113b472c82a651a2a0c https://www.notion.so/code-17a8289df06980f7b0cbfa426e9d26b5?pvs=4
+        resp = self.client.get_page("17a8289df06980f7b0cbfa426e9d26b5")
         print(resp.text)
 
     def test_get_page_blocks(self):
         # https://www.notion.so/1178289df0698177845aec91fe937f31?pvs=4
-        resp = self.client.get_page_blocks("1178289df0698177845aec91fe937f31")
+        resp = self.client.get_page_blocks("17a8289df06980f7b0cbfa426e9d26b5")
         with open("./block.json", "w+", encoding="utf-8") as f:
             f.write(resp.text)
 

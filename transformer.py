@@ -216,6 +216,7 @@ def transformUlElementNode(node: ULElement):
     while len(stack) > 0:
         current = stack.pop()
         if current.text is not None and not isinstance(current, RichText):
+            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
             list_item['bulleted_list_item']['rich_text'].append({
                 "type": "text",
                 "text": {
@@ -266,6 +267,7 @@ def transformOlementNode(node: OLElement):
     while len(stack) > 0:
         current = stack.pop()
         if current.text is not None and not isinstance(current, RichText):
+            list_item = {"type": "numbered_list_item", "numbered_list_item": {"rich_text": []}}
             list_item['numbered_list_item']['rich_text'].append({
                 "type": "text",
                 "text": {

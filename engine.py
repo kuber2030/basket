@@ -235,6 +235,9 @@ class CSDNEngine(Engine):
                         nestedElement.children.append(element_node)
                     elif child.tag == 'a' and element_node is not None:
                         nestedElement.children.append(element_node)
+                    elif child.tag == 'p' and element_node is not None:
+                    #     TODO
+                        print("暂时不支持li标签里面还套p标签的解析")
 
                     if child.tail is not None and child.tail.strip() != "":
                         nestedElement.children.append(RichText(child.tail.strip()))
@@ -293,6 +296,8 @@ class CSDNEngine(Engine):
                             code_bolock += child.tail
                 if code_bolock != '':
                     return CodeElementNode(code_bolock, language, tag="code", html_element=element)
+        if element.tag == 'code':
+            return RichText(element.text, code=True) # 行内代码块，实际上就是普通的文本，添加了code属性
 
     def get_Elements(self) -> list[ElementNode]:
         return self.elements
