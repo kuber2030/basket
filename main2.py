@@ -19,9 +19,23 @@ logger.propagate = False
 client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g",
                        # proxy={"https": "https://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
                        )
-
-response = requests.get("https://kangll.blog.csdn.net/article/details/135519763")
+headers = {
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+  'Accept-Language': 'zh-CN,zh;q=0.9',
+  'Connection': 'keep-alive',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"'
+}
+response = requests.get("https://blog.csdn.net/yuzheh521/article/details/135452889", headers=headers)
 text = response.text
+print(text)
 # with open("./test/test6.html", 'r', encoding='utf-8') as f:
 #     lines = f.readlines()
 #     text = "".join(lines)
