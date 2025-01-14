@@ -41,9 +41,9 @@ def transformRichElementNode(node):
             },
             "plain_text": "",
         }
+        return n
     except Exception as e:
-        print(e)
-    return n
+        logging.error("解析RichElement失败", exc_info=e)
 
 
 
@@ -239,6 +239,10 @@ def transformUlElementNode(node: ULElement):
                     if not hasattr(list_item['bulleted_list_item'], 'children'):
                         list_item['bulleted_list_item']['children'] = []
                     list_item['bulleted_list_item']['rich_text'].append(transformLinkElementNode(child_in_current))
+                elif isinstance(child_in_current, PElementNode):
+                    logging.info(f"<li>标签嵌套<p>标签处理 {child_in_current.text}")
+                    for child in child_in_current.children:
+                        stack.append(child)
                 else:
                     list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
             list_items.append(list_item)
@@ -253,6 +257,34 @@ def transformUlElementNode(node: ULElement):
     # 删除所有的子元素，因为在这一步我们已经递归完毕了
     node.children=[]
     return list_items
+
+
+def merge_PElementNode_children_into_numbered_list_item(pElementNode: PElementNode):
+    """把p标签中的所有子元素合并为有序列表项，因此只方法只会返回富文本列表"""
+    richTextList = []
+    stack = []
+    if len(pElementNode.children) > 0:
+        if pElementNode.text is not None:
+            richTextList.append(RichText(pElementNode.text))
+        # 这里要实现深度遍历，而不是层序遍历
+        for child in reversed(pElementNode.children):
+            stack.append(child)
+        while len(stack) > 0:
+            current = stack.pop()
+            # 先保存当前节点的文本，再遍历子节点
+            if current.text is not None:
+                richTextList.append(RichText(current.text))
+            if isinstance(current, NestedElementNode):
+                for child in reversed(current.children):
+                    stack.append(child)
+            if isinstance(current, PElementNode):
+                for child in reversed(current.children):
+                    stack.append(child)
+            if isinstance(current, RichText):
+                richTextList.append(current)
+    else:  # 无子元素,直接添加为富文本
+        richTextList.append(RichText(pElementNode.text))
+    return richTextList
 
 def transformOlementNode(node: OLElement):
     """
@@ -277,6 +309,14 @@ def transformOlementNode(node: OLElement):
         if isinstance(current, NestedElementNode):
             for child in reversed(current.children):
                 stack.append(child)
+        elif isinstance(current, PElementNode):
+            logging.info(f"<li>标签嵌套<p>标签处理 {current.text}")
+            # 拿出<p>中的所有子元素，内部方法会处理，不需要再深度遍历了
+            richTextList = merge_PElementNode_children_into_numbered_list_item(current)
+            for richText in richTextList:
+                list_item = {"type": "numbered_list_item", "numbered_list_item": {"rich_text": []}}
+                list_item['numbered_list_item']['rich_text'].append(transformRichElementNode(richText))
+                list_items.append(list_item)
         # 如果已经是富文本了，直接追加
         elif isinstance(current, RichText):
             list_item = {"type": "numbered_list_item", "numbered_list_item": {"rich_text": []}}

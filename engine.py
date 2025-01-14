@@ -236,8 +236,15 @@ class CSDNEngine(Engine):
                     elif child.tag == 'a' and element_node is not None:
                         nestedElement.children.append(element_node)
                     elif child.tag == 'p' and element_node is not None:
-                    #     TODO
-                        print("暂时不支持li标签里面还套p标签的解析")
+                        pElementNode = PElementNode(element.text, children=[])
+                        if CSDNEngine.__has_children__(element):
+                            for child in element.getchildren():
+                                elementNdde = self.traverse(child)  # type: ElementNode
+                                pElementNode.children.append(elementNdde)
+                                # 好多不规范的情况
+                                if child.tail is not None and child.tail.strip() != "":
+                                    pElementNode.children.append(RichText(child.tail.strip()))
+                        nestedElement.children.append(pElementNode)
 
                     if child.tail is not None and child.tail.strip() != "":
                         nestedElement.children.append(RichText(child.tail.strip()))
@@ -276,11 +283,13 @@ class CSDNEngine(Engine):
                 code_bolock = ""
                 language = "bash"
                 code_language = element.get("class") if element.get("class") is not None else ""
-                if code_language.find("java") > 0:
+                if "javascript" in code_language:
+                    language = 'javascript'
+                elif "java" in code_language:
                     language = 'java'
-                if code_language.find("python") > 0:
+                elif "python" in code_language:
                     language = 'python'
-                if code_language.find("go") > 0:
+                elif "go" in code_language:
                     language = 'go'
               # type: list[etree._Element]
                 code = element.xpath("code")

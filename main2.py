@@ -33,22 +33,22 @@ headers = {
   'sec-ch-ua-mobile': '?0',
   'sec-ch-ua-platform': '"Windows"'
 }
-response = requests.get("https://blog.csdn.net/yuzheh521/article/details/135452889", headers=headers)
-text = response.text
-print(text)
-# with open("./test/test6.html", 'r', encoding='utf-8') as f:
-#     lines = f.readlines()
-#     text = "".join(lines)
+# response = requests.get("https://blog.csdn.net/yuzheh521/article/details/135452889", headers=headers)
+# text = response.text
+# print(text)
+with open("./test/test7.html", 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+    text = "".join(lines)
 csdnEngine = engine.CSDNEngine("csdn", text)
 assert len(csdnEngine.get_Elements()) > 0
 # print(csdnEngine.get_Elements())
 
-createdPage = client.create_page(csdnEngine.title, None, page_id="12d8289df06980afa989fe9acf337c3e",)
-print(createdPage.text)
-if createdPage.status_code != 200:
-    sys.exit(-1)
-pageid = createdPage.json().get("id")
-# pageid = "12d8289df06981688ecaecf8bf2fa268"
+# createdPage = client.create_page(csdnEngine.title, None, page_id="12d8289df06980afa989fe9acf337c3e",)
+# print(createdPage.text)
+# if createdPage.status_code != 200:
+#     sys.exit(-1)
+# pageid = createdPage.json().get("id")
+pageid = "17b8289df06981139345c234d9d68536"
 
 def create_block(pageid, elements):
     if elements is None:
@@ -58,7 +58,7 @@ def create_block(pageid, elements):
         # TODO 暂时先过滤不支持的元素
         if not notionEle:
             continue
-        # 这里约定，如果返回的是列表，则约定没有子元素了，不需要递归了
+        # 这里约定，如果返回的是列表，则约定没有子元素了，不需要递归了，目前只有<ul>和<ol>元素是这样的
         if isinstance(notionEle, list):
             for ele in notionEle:
                 resp = client.append_block(pageid, [ele])
