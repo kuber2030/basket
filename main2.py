@@ -33,12 +33,12 @@ headers = {
   'sec-ch-ua-mobile': '?0',
   'sec-ch-ua-platform': '"Windows"'
 }
-# response = requests.get("https://blog.csdn.net/yuzheh521/article/details/135452889", headers=headers)
-# text = response.text
-# print(text)
-with open("./test/test7.html", 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-    text = "".join(lines)
+response = requests.get("https://blog.csdn.net/yuzheh521/article/details/135452889", headers=headers)
+text = response.text
+print(text)
+# with open("./test/test7.html", 'r', encoding='utf-8') as f:
+#     lines = f.readlines()
+#     text = "".join(lines)
 csdnEngine = engine.CSDNEngine("csdn", text)
 assert len(csdnEngine.get_Elements()) > 0
 # print(csdnEngine.get_Elements())

@@ -236,6 +236,7 @@ class CSDNEngine(Engine):
                     elif child.tag == 'a' and element_node is not None:
                         nestedElement.children.append(element_node)
                     elif child.tag == 'p' and element_node is not None:
+                        # 如果li嵌套了p标签 例如：<li><p></p></li>，忘记为什么要这样干了, 有可能是为了处理类似于<li><p></p><span></span></li>这种情况
                         pElementNode = PElementNode(element.text, children=[])
                         if CSDNEngine.__has_children__(element):
                             for child in element.getchildren():
