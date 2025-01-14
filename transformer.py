@@ -215,19 +215,13 @@ def transformUlElementNode(node: ULElement):
     stack.append(node)
     while len(stack) > 0:
         current = stack.pop()
-        if current.text is not None and not isinstance(current, RichText):
-            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
-            list_item['bulleted_list_item']['rich_text'].append({
-                "type": "text",
-                "text": {
-                    "content": current.text,
-                }
-            })
         if isinstance(current, NestedElementNode):
+            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+            if current.text is not None and len(current.text) > 0:
+                list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(RichText(current.text)))
             for child in reversed(current.children):
                 stack.append(child)
             size = len(current.children)
-            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
             for i in range(size):
                 child_in_current = stack.pop()
                 # 处理li标签中，还会嵌套图片的特殊情况
@@ -239,12 +233,27 @@ def transformUlElementNode(node: ULElement):
                     if not hasattr(list_item['bulleted_list_item'], 'children'):
                         list_item['bulleted_list_item']['children'] = []
                     list_item['bulleted_list_item']['rich_text'].append(transformLinkElementNode(child_in_current))
-                elif isinstance(child_in_current, PElementNode):
-                    logging.info(f"<li>标签嵌套<p>标签处理 {child_in_current.text}")
-                    for child in child_in_current.children:
+                elif isinstance(current, PElementNode):
+                    logging.info(f"<li>标签嵌套<p>标签处理 {current.text}")
+                    # 拿出<p>中的所有子元素，内部方法会处理，不需要再深度遍历了
+                    richTextList = merge_PElementNode_children_into_numbered_list_item(current)
+                    list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+                    for richText in richTextList:
+                        list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(richText))
+                elif isinstance(current, NestedElementNode):
+                    for child in reversed(current.children):
                         stack.append(child)
                 else:
-                    list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
+                    print("TODO 暂不支持该节点", child_in_current.text)
+                    # list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(child_in_current))
+            list_items.append(list_item)
+        elif isinstance(current, PElementNode):
+            logging.info(f"<li>标签嵌套<p>标签处理 {current.text}")
+            # 拿出<p>中的所有子元素，内部方法会处理，不需要再深度遍历了
+            richTextList = merge_PElementNode_children_into_numbered_list_item(current)
+            list_item = {"type": "bulleted_list_item", "bulleted_list_item": {"rich_text": []}}
+            for richText in richTextList:
+                list_item['bulleted_list_item']['rich_text'].append(transformRichElementNode(richText))
             list_items.append(list_item)
         # 如果已经是富文本了，直接追加
         elif isinstance(current, RichText):
@@ -282,6 +291,12 @@ def merge_PElementNode_children_into_numbered_list_item(pElementNode: PElementNo
             if isinstance(current, PElementNode):
                 for child in reversed(current.children):
                     stack.append(child)
+            # 还可能出现二级列表的嵌套 比如ol套li，li再套ul，ul再套li。notion api不太好用，这里格式没有办法完全还原二级列表，先保证有数据就行
+            # TODO 要完全解决这个问题，要重构代码，如果遇到块级元素，比如p，ul，先创建block块，得到block_id，再往里面追加新的block（普通元素诸如image。link richtext也得看做是子block了），但是一个page里面block的最大数量又只有100个
+            # https://developers.notion.com/reference/patch-block-children
+            if isinstance(current, ULElement):
+                for child in reversed(current.children):
+                    stack.append(child)
 
     else:  # 无子元素,直接添加为富文本
         richTextList.append(RichText(pElementNode.text))
@@ -299,14 +314,6 @@ def transformOlementNode(node: OLElement):
     stack.append(node)
     while len(stack) > 0:
         current = stack.pop()
-        if current.text is not None and not isinstance(current, RichText):
-            list_item = {"type": "numbered_list_item", "numbered_list_item": {"rich_text": []}}
-            list_item['numbered_list_item']['rich_text'].append({
-                "type": "text",
-                "text": {
-                    "content": current.text,
-                }
-            })
         if isinstance(current, NestedElementNode):
             for child in reversed(current.children):
                 stack.append(child)

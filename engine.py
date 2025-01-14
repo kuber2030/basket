@@ -147,7 +147,7 @@ class CSDNEngine(Engine):
 
     @staticmethod
     def __has_children__(element):
-        return element and len(element.getchildren()) > 0
+        return element is not None and len(element.getchildren()) > 0
 
     def traverse(self, element:etree._Element):
         if element is None:
@@ -246,6 +246,9 @@ class CSDNEngine(Engine):
                                 if child.tail is not None and child.tail.strip() != "":
                                     pElementNode.children.append(RichText(child.tail.strip()))
                         nestedElement.children.append(pElementNode)
+                    #  增加li标签内的code标签解析
+                    elif child.tag == 'code':
+                        nestedElement.children.append(RichText(child.text, code=True))
 
                     if child.tail is not None and child.tail.strip() != "":
                         nestedElement.children.append(RichText(child.tail.strip()))

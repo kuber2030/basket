@@ -18,7 +18,7 @@ class TestCase01Class():
 
     def test_get_page_blocks(self):
         # https://www.notion.so/1178289df0698177845aec91fe937f31?pvs=4
-        resp = self.client.get_page_blocks("17a8289df06980f7b0cbfa426e9d26b5")
+        resp = self.client.get_page_blocks("17b8289df06981139345c234d9d68536")
         with open("./block.json", "w+", encoding="utf-8") as f:
             f.write(resp.text)
 
