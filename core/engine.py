@@ -105,20 +105,19 @@ class Engine:
     @staticmethod
     def get_engine(website_type: str):
         if website_type == "csdn":
-            def newCSDN(**kwargs):
-                return CSDNEngine(website_type, **kwargs)
-
-            return newCSDN
+            def _builder(text:str, title:str):
+                    return CSDNEngine(text, title, website_type="csdn")
+            return _builder
 
         elif website_type == "wx":
-            def newWX(**kwargs):
-                return WxEngine(website_type, **kwargs)
-            return newWX
+            def _builder(text:str, title:str):
+                    return WxEngine(text, title, website_type="wx")
+            return _builder
 
 class CSDNEngine(Engine):
 
-    def __init__(self, website_type, html_text, title=None):
-        super().__init__(website_type, html_text)
+    def __init__(self, html_text, title=None, **kwargs):
+        super().__init__(kwargs["website_type"], html_text)
         html: etree._Element = etree.HTML(self.html_text)
         content_node = html.xpath('//div[@class="blog-content-box"]')  # type: list[etree._Element]
         if not title:
@@ -325,8 +324,8 @@ class CSDNEngine(Engine):
     
 
 class WxEngine(Engine):
-    def __init__(self,  website_type, html_text, title=None):
-        super().__init__(website_type, html_text)
+    def __init__(self, html_text, title=None, **kwargs):
+        super().__init__(kwargs["website_type"], html_text)
 
     def parse_article_title(self, element: etree._Element):
         article_node = element.xpath("//title")

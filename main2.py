@@ -21,12 +21,13 @@ client = notion.Client("secret_TFChRbHM6JBd7zd41OpgfXWkGRxA8PbR3cI8g51AQ8g",
 
 
 html_loader = hl.HtmlLoader()
-text = html_loader.get_html("https://mp.weixin.qq.com/s/dnlxCXgAxHsfyVNYTDsewA")
+# text = html_loader.get_html("https://mp.weixin.qq.com/s/dnlxCXgAxHsfyVNYTDsewA")
 # text = html_loader.get_html("https://blog.csdn.net/MeituanTech/article/details/140197400")
+text = html_loader.get_html("https://blog.csdn.net/qq_35995514/article/details/135519763")
 # text = html_loader.mock_get_html("https://blog.csdn.net/MeituanTech/article/details/140197400", "./test/test10.html")
 print(text)
 # engine_impl = engine.Engine.get_engine("csdn")(text, title=None)
-engine_impl = engine.Engine.get_engine("wx")(text, title=None)
+engine_impl = engine.Engine.get_engine("csdn")(text, title=None)
 pageid = client.create_page(engine_impl.title, None, page_id="12d8289df06980afa989fe9acf337c3e")
 # pageid = "17c8289df06981f2a5c2da9e07df0a8e"
 
