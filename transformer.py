@@ -1,7 +1,7 @@
 import copy
 import logging
 
-from engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
+from core.engine import ImageElementNode, PElementNode, HeadingElementNode, RichText, ElementNode, CalloutElement, \
     NestedElementNode, ULElement, OLElement, LinkElementNode, CodeElementNode
 
 

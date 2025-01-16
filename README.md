@@ -13,9 +13,9 @@ What's different: It's highly customizable, filtering out sidebars and skipping 
   - [x] support paragraph
   - [x] support image
   - [x] support callout
-  - [ ] support link
-  - [ ] support unordered list
+  - [x] support link
+  - [x] support unordered list
   - [ ] support table
-  - [ ] support code block
+  - [x] support code block
 - [ ] JianShu
 - [ ] JueJin

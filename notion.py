@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import uuid
 
 import requests
@@ -23,7 +24,7 @@ class Client(object):
         :param database_id:
         :param page_id:
         :param kwargs:
-        :return:
+        :return: created page id
         """
         parent = {}
         properties = {}
@@ -59,7 +60,11 @@ class Client(object):
             parent['database_id'] = database_id
         else:
             raise Exception("页面id或者数据库id不能为空")
-        return self.__create_page(parent, properties, children, **kwargs)
+        response = self.__create_page(parent, properties, children, **kwargs)
+        if response.status_code != 200:
+            logger.error("create page or create database failed, notion error_code=%s, error_msg=%s",response.status_code, response.text)
+            sys.exit(-1)
+        return response.json().get("id")
 
     def __create_page(self, parent, properties: dict, children: list, icon=None, cover=None):
         """

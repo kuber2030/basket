@@ -1,6 +1,7 @@
 import logging
 from lxml import etree
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -10,15 +11,6 @@ class ElementNode:
         self.tag = tag
         self.children = children
         self.html_element = html_element
-
-
-class PlainText:
-    def __init__(self, text:str):
-        self.text = text
-
-    def __str__(self):
-        return self.text
-
 
 class HeadingElementNode(ElementNode):
     def __init__(self, text: str, level: int, color=None, **kwargs):
@@ -110,6 +102,18 @@ class Engine:
         pass
 
 
+    @staticmethod
+    def get_engine(website_type: str):
+        if website_type == "csdn":
+            def newCSDN(**kwargs):
+                return CSDNEngine(website_type, **kwargs)
+
+            return newCSDN
+
+        elif website_type == "wx":
+            def newWX(**kwargs):
+                return WxEngine(website_type, **kwargs)
+            return newWX
 
 class CSDNEngine(Engine):
 
@@ -125,6 +129,9 @@ class CSDNEngine(Engine):
         content_views = content_node[0].xpath('//div[@id="content_views"]')
         if len(content_views) > 0:
             self.article_content = content_views[0]
+        # 处理特殊情况，部分博客下面还嵌套了div
+        if content_views[0].getchildren()[0].get('id') == 'js_content':
+            self.article_content = content_views[0].getchildren()[0]
         self.elements = []
         assert self.article_content is not None
         self.toc_exists = False
@@ -304,7 +311,8 @@ class CSDNEngine(Engine):
                 children = code[0].getchildren()
                 for child in children:
                     if child.tag == 'span':
-                        code_bolock += child.text
+                        if child.text is not None:
+                            code_bolock += child.text
                         if child.tail and child.tail!= '\r':
                             code_bolock += child.tail
                 if code_bolock != '':
@@ -316,4 +324,21 @@ class CSDNEngine(Engine):
         return self.elements
     
 
+class WxEngine(Engine):
+    def __init__(self,  website_type, html_text, title=None):
+        super().__init__(website_type, html_text)
 
+    def parse_article_title(self, element: etree._Element):
+        article_node = element.xpath("//title")
+        if article_node:
+            return article_node[0].text.removesuffix("-CSDN博客")
+
+    def parse_elements(self):
+        children = self.article_content.getchildren()  # type: list[etree._Element]
+        for child in children:
+            element = self.traverse(child)
+            # 某些情况下，会返回多个
+            if isinstance(element, list):
+                self.elements += element
+            elif element is not None:
+                self.elements.append(element)

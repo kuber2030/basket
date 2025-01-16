@@ -1,8 +1,6 @@
-import logging
-
 import requests
 
-import engine
+from core import engine
 import notion
 import transformer
 import logging
