@@ -1,6 +1,7 @@
 import logging
 from lxml import etree
-
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ class ImageElementNode(ElementNode):
     def __init__(self, src: str, **kwargs):
         super().__init__(**kwargs)
         self.src = src
+        # self.src = "https://www.notion.so/images/page-cover/woodcuts_6.jpg"
+        # if "?" in self.src:
+        #     self.src = self.src.split("?")[0]
 
 
 class LinkElementNode(ElementNode):
@@ -326,18 +330,116 @@ class CSDNEngine(Engine):
 class WxEngine(Engine):
     def __init__(self, html_text, title=None, **kwargs):
         super().__init__(kwargs["website_type"], html_text)
+        self.title = "xxx"
+        self.elements = []
+        self.parse_elements()
 
-    def parse_article_title(self, element: etree._Element):
-        article_node = element.xpath("//title")
-        if article_node:
-            return article_node[0].text.removesuffix("-CSDN博客")
+    def get_Elements(self) -> list[ElementNode]:
+        return self.elements
+
+    def write_to_file(self, content: str):
+        with open("./test.txt", "a", encoding="utf-8") as f:
+            if len(content) > 0:
+                f.write(content)
+                f.write("\n")
+                f.close()
+
+    def traverse_content(self, element: Tag):
+        """
+        遍历微信文章正文开始
+        """
+        ele_name = element.name
+        if ele_name == 'div':
+            children = element.children
+            for child in children:
+                self.traverse_content(child)
+        elif ele_name == "p":
+            # 当前节点文本为空，或只有一个儿子，且儿子也为空
+            current_text_p = element.string
+            if current_text_p is None:
+                children_p = element.children
+                for child in children_p:
+                    if child.name == 'img':
+                        # image_src = image_src.replace("\n", "")
+                        # self.write_to_file(image_src)
+                        # self.elements.append(ImageElementNode(image_src, tag="image", html_element=element))
+                        # self.write_to_file(child.attrs['data-src'])
+                        # self.elements.append(ImageElementNode(child.attrs['data-src'].strip(), tag="image", html_element=element))
+                        image_src = child.attrs['data-src']
+                        image_src = image_src.replace("\n", "")
+                        self.write_to_file(image_src)
+                        self.elements.append(ImageElementNode(image_src, tag="image", html_element=child))
+
+                    # 如果当前节点有值
+                    elif child.string is not None:
+                        pElementNode = PElementNode(child.string + "\n", children=[])
+                        self.elements.append(pElementNode)
+                        self.write_to_file(child.string)
+                    # 获取所有的儿子节点的文本值
+                    else:
+                        pElementNode = PElementNode(child.text+ "\n", children=[])
+                        self.elements.append(pElementNode)
+                        self.write_to_file(child.text)
+            else:
+                self.write_to_file(current_text_p)
+                pElementNode = PElementNode(current_text_p, children=[])
+                self.elements.append(pElementNode)
+
+        elif ele_name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+            current_text_h = element.string
+            if current_text_h is None:
+                # 获取所有子节点的文本
+                self.write_to_file(element.text)
+                current_text_h = element.text
+                self.elements.append(HeadingElementNode(current_text_h, int(element.name[-1]), tag=element.name))
+            else:
+                self.write_to_file(current_text_h)
+                self.elements.append(HeadingElementNode(current_text_h, int(element.name[-1]), tag=element.name))
+
+        elif ele_name == "ul":
+            ulElement = ULElement(element.string, children=[])
+            lis = element.find_all(name='li')
+            for li in lis:
+                if li.string is None:
+                    self.write_to_file("-" + li.text)
+                    nestedElement = NestedElementNode(li.text, children=[])
+                else:
+                    self.write_to_file(li.string)
+                    nestedElement = NestedElementNode(li.string, children=[])
+                ulElement.children.append(nestedElement)
+            self.elements.append(ulElement)
+
+        elif ele_name == "image":
+            image_src = element.attrs['data-src'].strip()
+            if "\n" in image_src:
+                image_src = image_src.replace("\n", "")
+                self.write_to_file(image_src)
+                self.elements.append(ImageElementNode(image_src, tag="image", html_element=element))
+
+    def traverse(self, element: Tag):
+        for child in element.children:
+            if child.name is None:
+                continue
+                # print("纯文本：", child.string)
+            # 文章标题
+            elif child.name in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                self.title = child.string.strip()
+                self.write_to_file(self.title)
+
+            elif child.name == "div":
+                # 不需要处理标题元信息
+                if child.attrs.get("id") == "meta_content":
+                    continue
+                elif child.attrs.get("id") == "js_content":
+                    self.traverse_content(child)
+            elif child.name == 'section':
+                # 跳过section节点，暂时不支持目录的解析
+                print()
+            else:
+                print(f"不支持的标签：{child.name} {child.string}")
 
     def parse_elements(self):
-        children = self.article_content.getchildren()  # type: list[etree._Element]
-        for child in children:
-            element = self.traverse(child)
-            # 某些情况下，会返回多个
-            if isinstance(element, list):
-                self.elements += element
-            elif element is not None:
-                self.elements.append(element)
+        soup = BeautifulSoup(self.html_text, 'html.parser')
+        container = soup.select("#img-content", limit=1)[0]
+        self.traverse(container)
+
